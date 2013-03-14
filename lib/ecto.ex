@@ -2,10 +2,15 @@ defmodule Ecto do
   import GenX.GenServer
   use Application.Behaviour
 
+  @pool Ecto
+
   alias :epgsql_pool, as: PG
 
-  def squery(stmt), do: PG.squery(@name, stmt)
-  def equery(stmt, args), do: PG.equery(@name, stmt, args)
+  def pool, do: @pool
+  def squery(stmt), do: PG.squery(pool, stmt)
+  def equery(stmt, args), do: PG.equery(pool, stmt, args)
+
+
 
   def start(_type, _args) do
     start

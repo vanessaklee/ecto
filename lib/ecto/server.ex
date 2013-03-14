@@ -1,19 +1,18 @@
 defmodule Ecto.Server do
-  @name Ecto
   @env_var 'ECTO_URI'
 
   def child_spec do
-    {pool_args, worker_args} = args System.get_env(@env_var)
-    :epgsql_pool.child_spec @name, pool_args, worker_args
+    {pool_args, worker_args} = parse(app_env_uri || sys_env_uri)
+    :epgsql_pool.child_spec Ecto.pool, pool_args, worker_args
   end
 
-  def args(uri) do
+  def parse(uri) do
     info = Ecto.URI.parse uri
     opts = Keyword.get info, :opts, []
     timeout = Keyword.get opts, :timeout, 3000
     opts = Keyword.delete opts, :timeout
 
-    pool_args = Keyword.merge [ name: { :local, @name } ], opts
+    pool_args = Keyword.merge [ name: { :local, Ecto.pool } ], opts
     
     worker_args = Enum.map [
       hostname: info[:host],
@@ -26,4 +25,13 @@ defmodule Ecto.Server do
 
     {pool_args, worker_args}
   end
+
+  def app_env_uri do
+    case :application.get_env(Ecto, :uri) do
+      { :ok, uri } -> uri
+      _other -> nil
+    end
+  end
+
+  def sys_env_uri, do: System.get_env("ECTO_URI")
 end
