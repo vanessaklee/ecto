@@ -17,10 +17,10 @@ $ mix compile
 
 ## Starting ecto
 
-Ecto looks in 2 placed for connection information on start-up. It first checks
+Ecto looks in 2 places for connection information on start-up. It first checks
 `:application.get_env(:ecto, :uri)` for a uri. If nothing is found there, Ecto
 uses the value found in `Sytem.get_env("ECTO_URI")`. Ecto will ungracefully fail
-to load if no valid uri is found in one of those 2 places.
+to load if no valid uri is found.
 
 A valid uri takes the form of `ecto://user:passwor@host/db?size=x&overflow=y`.
 
