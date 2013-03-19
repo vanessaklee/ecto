@@ -1,8 +1,22 @@
 defmodule Ecto.Supervisor do
-  alias GenX.Supervisor, as: Sup
-  alias Ecto.Pool, as: Pool
+  @moduledoc """
+  Supervises each ecto pool to make it easier to start up a new one
+  """
+  use Supervisor.Behaviour
 
-  def start_link do
-    Sup.start_link Sup.OneForOne.new(id: Ecto, children: [ Pool.child_spec ])
+  def start_link() do
+    :supervisor.start_link({ :local, __MODULE__ }, __MODULE__, [])
+  end
+
+  def init(_) do
+    supervise children, strategy: :simple_one_for_one
+  end
+
+  def children do
+    [ worker(Ecto.Pool, [], restart: :transient) ]
+  end
+
+  def start_child(uri) do
+    :supervisor.start_child(__MODULE__, [uri])
   end
 end

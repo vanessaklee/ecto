@@ -1,6 +1,4 @@
 defmodule Ecto do
-  alias :epgsql_pool, as: PG
-
   defexception RecordNotFound, [:module, :id] do
     def message(exception) do
       "could not find record #{inspect exception.module} with id #{inspect exception.id}"
@@ -12,11 +10,11 @@ defmodule Ecto do
   Returns nil if one is not found.
   """
   def get(module, id) do
-    query = "SELECT * FROM #{module.__ecto__(:table)} WHERE #{module.__ecto__(:primary_key)} = $1"
+    query = "#{select_from(module)} WHERE #{module.__ecto__(:primary_key)} = $1"
 
-    case Ecto.Pool.equery! query, [id] do
-      [h] -> module.__ecto__(:allocate, h)
-      []  -> nil
+    case Ecto.Pool.query! query, [id] do
+      { [h], _count } -> module.__ecto__(:allocate, h)
+      { [], 0 } -> nil
     end
   end
 
@@ -31,7 +29,7 @@ defmodule Ecto do
   Gets all records that matches the set of conditions.
   """
   def all(module, opts // []) do
-    query = "SELECT * FROM #{module.__ecto__(:table)}"
+    query = select_from(module)
     args = []
 
     if where = opts[:where] do
@@ -60,8 +58,15 @@ defmodule Ecto do
       query = query <> " LIMIT #{limit}"
     end
 
-    results = Ecto.Pool.equery! query, args
+    { results, _count } = Ecto.Pool.query! query, args
     lc result inlist results, do: module.__ecto__(:allocate, result)
+  end
+
+  defp select_from(module) do
+    fields = module.__ecto__(:fields)
+    cols   = Enum.join(Enum.map(fields, to_binary(&1)), ",")
+    table  = module.__ecto__(:table)
+    "SELECT #{cols} from #{table}"
   end
 
   @doc """
@@ -75,9 +80,9 @@ defmodule Ecto do
 
     if primary_key do
       query = "SELECT EXISTS (SELECT TRUE FROM #{table} WHERE #{primary_key} = $1 LIMIT 1)"
-      case Ecto.Pool.equery(query, [id]) do
-        [[{ _, true }]] -> true
-        _               -> false
+      case Ecto.Pool.query(query, [id]) do
+        { [ { true } ], _count }  -> true
+        _other                    -> false
       end
     else
       false
@@ -101,7 +106,7 @@ defmodule Ecto do
     kv = Enum.map_join List.zip([keys, values]), ",", fn({k, v}) -> "#{k} = #{v}" end
 
     query = "UPDATE #{table} SET #{kv} WHERE #{primary_key} = $#{len(params)+1} RETURNING *"
-    { [result], _count } = Ecto.Pool.equery! query, params ++ [id]
+    { [result], _count } = Ecto.Pool.query! query, params ++ [id]
     module.__ecto__(:allocate, result)
   end
 
@@ -122,7 +127,7 @@ defmodule Ecto do
     keys = Enum.join keys, ","
     values = Enum.join values, ","
 
-    { [result], _count } = Ecto.Pool.equery! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING *", params
+    { [result], _count } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING *", params
     module.__ecto__(:allocate, result)
   end
 
@@ -158,6 +163,6 @@ defmodule Ecto do
     primary_key = module.__ecto__(:primary_key)
     pk_value    = apply(module, primary_key, [record])
 
-    Ecto.Pool.equery! "DELETE FROM #{table} WHERE #{primary_key} = $1", [pk_value]
+    { [], 1 } == Ecto.Pool.query! "DELETE FROM #{table} WHERE #{primary_key} = $1", [pk_value]
   end
 end

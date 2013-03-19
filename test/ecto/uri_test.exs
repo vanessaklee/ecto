@@ -8,7 +8,7 @@ defmodule URI.ParserTest do
   test :default_port, do: assert 5432 == Parser.default_port
 
   test :parse_simple_uri do
-    url      = "ecto://localhost/thedatabase"
+    url      = "ecto+postgres://localhost/thedatabase"
     actual   = Parser.parse(url)
     expected = [ host: "localhost",
                  port: 5432,
@@ -19,7 +19,7 @@ defmodule URI.ParserTest do
   end
 
   test :parse_url_with_user do
-    url      = "ecto://user@localhost/thedatabase"
+    url      = "ecto+postgres://user@localhost/thedatabase"
     actual   = Parser.parse(url)
     expected = [ host: "localhost",
                  port: 5432, 
@@ -30,7 +30,7 @@ defmodule URI.ParserTest do
   end
 
   test :parse_full_url do
-    url      = "ecto://user:pass@localhost/thedatabase"
+    url      = "ecto+postgres://user:pass@localhost/thedatabase"
     actual   = Parser.parse(url)
     expected = [ host: "localhost",
                  port: 5432, 
@@ -41,14 +41,14 @@ defmodule URI.ParserTest do
   end
 
   test :parse_options do
-    url      = "ecto://user:pass@localhost/thedatabase?size=10&overflow=5&timeout=5000&shoe=14"
+    url      = "ecto+postgres://user:pass@localhost/thedatabase?size=10&overflow=5&shoe=14&name=foo"
     actual   = Parser.parse(url)
     expected = [ host: "localhost",
                  port: 5432, 
                  db:   "thedatabase",
                  user: "user",
                  pass: "pass",
-                 opts: [ size: 10, max_overflow: 5, timeout: 5000 ]]
+                 opts: [ size: 10, max_overflow: 5, name: :foo ]]
     assert Keyword.equal?(expected, actual)
   end
 
@@ -57,22 +57,22 @@ defmodule URI.ParserTest do
   end
 
   test :no_password, do: assert_raise ParseError, fn ->
-    Parser.parse "ecto://user:@localhost/db"
+    Parser.parse "ecto+postgres://user:@localhost/db"
   end
 
   test :no_user, do: assert_raise ParseError, fn ->
-    Parser.parse "ecto://:pass@host/db"
+    Parser.parse "ecto+postgres://:pass@host/db"
   end
 
   test :no_db, do: assert_raise ParseError, fn ->
-    Parser.parse "ecto://user:pass@host"
+    Parser.parse "ecto+postgres://user:pass@host"
   end
   
   test :no_db_with_args, do: assert_raise ParseError, fn ->
-    Parser.parse "ecto://user:pass@host?args"
+    Parser.parse "ecto+postgres://user:pass@host?args"
   end
 
   test :no_host, do: assert_raise ParseError, fn ->
-    Parser.parse "ecto://user:pass@/db"
+    Parser.parse "ecto+postgres://user:pass@/db"
   end
 end

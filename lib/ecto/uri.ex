@@ -9,7 +9,7 @@ defmodule Ecto.URI do
   
   def default_port(), do: 5432
 
-  def parse(<<"ecto://", rest :: binary>> = uri) do
+  def parse(<<"ecto+postgres://", rest :: binary>> = uri) do
     info = [ host: nil, port: 5432, db: nil, user: nil, pass: nil ]
     case parse_user(rest, "", info) do
       {:error, reason} -> raise ParseError.new uri: uri, reason: reason
@@ -18,7 +18,7 @@ defmodule Ecto.URI do
   end
 
   def parse(uri) do
-    raise ParseError.new reason: "uri must begin with ecto://", uri: uri
+    raise ParseError.new reason: "uri must begin with ecto+postgres://", uri: uri
   end
 
   #if we get this far with an empty accumulator
@@ -118,8 +118,9 @@ defmodule Ecto.URI do
     Keyword.put info, :opts, opts
   end
 
-  defp opt(["size", size]), do: {:size, binary_to_integer(size)}
-  defp opt(["overflow", overflow]), do: {:max_overflow, binary_to_integer(overflow)}
-  defp opt(["timeout", timeout]), do: {:timeout, binary_to_integer(timeout)}
+  defp opt(["name", name]),         do: { :name, binary_to_atom(name) }
+  defp opt(["size", size]),         do: { :size, binary_to_integer(size) }
+  defp opt(["timeout", timeout]),   do: { :timeout, binary_to_integer(timeout) }
+  defp opt(["overflow", overflow]), do: { :max_overflow, binary_to_integer(overflow) }
   defp opt([_, _]), do: nil
 end

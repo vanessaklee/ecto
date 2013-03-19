@@ -10,16 +10,13 @@ defmodule Ecto.Mixfile do
   # Configuration for the OTP application
   def application do
     [ registered: [:ecto],
-      applications: [:kernel, :stdlib, :elixir, :crypto, :ssl],
-      mod: { Ecto.Application, [] } ]
+      applications: [:kernel, :stdlib, :elixir] ]
   end
 
   # Returns the list of dependencies in the format:
   # { :foobar, "0.1", git: "https://github.com/elixir-lang/foobar.git" }
   defp deps do
-    [ { :genx, github: "yrashk/genx" },
-      { :poolboy, github: "devinus/poolboy" },
-      { :epgsql, github: "wg/epgsql" },
-      { :epgsql_pool, github: "devinus/epgsql_pool" } ]
+    [ { :poolboy, github: "devinus/poolboy" },
+      { :pgsql, github: "semiocast/pgsql" } ]
   end
 end

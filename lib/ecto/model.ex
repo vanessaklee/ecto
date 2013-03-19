@@ -78,8 +78,16 @@ defmodule Ecto.Model do
 
     fields = Module.get_attribute(__CALLER__.module, :ecto_fields)
     fields = Enum.reverse(fields)
-    fields = lc key inlist fields do
+
+    allocate_fields = lc key inlist fields do
       { key, quote do: __allocate__(var!(args), unquote(to_binary(key))) }
+    end
+
+    { allocate_fields2, _ } = Enum.reduce fields, { [], 0 }, fn
+      (key, { acc, pos }) ->
+        acc = [ { key, quote do: elem( var!(args), unquote(pos)) } | acc ]
+        pos = pos + 1
+        { acc, pos }
     end
 
     quote location: :keep do
@@ -91,13 +99,18 @@ defmodule Ecto.Model do
         end
       end
 
-      def __ecto__(:allocate, var!(args)) do
-        __MODULE__[unquote(fields)]
+      def __ecto__(:allocate, var!(args)) when is_list(var!(args)) do
+        __MODULE__[unquote(allocate_fields)]
+      end
+
+      def __ecto__(:allocate, var!(args)) when is_tuple(var!(args)) do
+        __MODULE__[unquote(allocate_fields2)]
       end
 
       def __ecto__(key, _record), do: __ecto__(key)
       def __ecto__(:table),       do: unquote(table)
       def __ecto__(:primary_key), do: unquote(primary_key)
+      def __ecto__(:fields),      do: unquote(fields)
     end
   end
 end

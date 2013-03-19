@@ -11,13 +11,14 @@ defmodule EctoModelTest do
   use ExUnit.Case
 
   setup_all do
-    Ecto.Pool.equery %b;
+    Ecto.Pool.start_link
+    Ecto.Pool.query %b;
       CREATE TABLE ecto_test ( id serial primary key, version int );
     :ok
   end
 
   teardown_all do
-    Ecto.Pool.equery "drop table ecto_test"
+    Ecto.Pool.query "drop table ecto_test"
     :ok
   end
 
@@ -42,7 +43,7 @@ defmodule EctoModelTest do
 
   test :destroy do
     d = Ecto.create TestModel[id: 2, version: 1]
-    assert 1 == Ecto.destroy d
+    assert Ecto.destroy d
   end
 
   test :get do
@@ -64,5 +65,13 @@ defmodule EctoModelTest do
 
     { models, _ } = Enum.split models, 2
     assert models == Ecto.all TestModel, where: [ version: 100 ], order_by: :id, limit: 2
+  end
+
+  test :allocate do
+    assert TestModel[id: 1, version: 2] == TestModel.__ecto__(:allocate, {1,2})
+  end
+
+  test :fields do
+    [:id, :version] = TestModel.__ecto__(:fields)
   end
 end
