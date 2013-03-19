@@ -10,7 +10,7 @@ Clone it via `git clone git@github.com/interline/ecto.git`
 Mix it up like this
 ```shell
 $ mix deps.get
-* Getting epgsql_pool [git: "https://github.com/devinus/epgsql_pool.git"]
+* Updating pgsql (17) [git: "https://github.com/semiocast/pgsql.git"]
 ...
 $ mix compile
 ```
