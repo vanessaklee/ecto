@@ -17,12 +17,18 @@ $ mix compile
 
 ## Starting ecto
 
-Ecto looks in 2 places for connection information on start-up. It first checks
-`:application.get_env(:ecto, :uri)` for a uri. If nothing is found there, Ecto
+Ecto comes with a simple_one_for_one supervisor which can be supervised in an
+application supervision tree. Calling `Ecto.Supervisor.start_link` will start
+it up just as you'd exptect. Once the supervisor is started, calling 
+`Ecto.Supervisor.start_child uri` will start a supervised connection pool.
+
+A connection pool can also be started with `Ecto.Pool.start_link [uri]`. If no
+uri is provided, ecto will try to find one in
+`:application.get_env(:ecto, :uri)`. If nothing is found there, Ecto
 uses the value found in `Sytem.get_env("ECTO_URI")`. Ecto will ungracefully fail
 to load if no valid uri is found.
 
-A valid uri takes the form of `ecto://user:passwor@host/db?size=x&overflow=y`.
+A valid uri takes the form of `ecto+postgres://user:passwor@host/db?size=x&overflow=y`.
 
 ## Testing ecto
 
