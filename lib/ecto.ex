@@ -34,14 +34,14 @@ defmodule Ecto do
 
     if where = opts[:where] do
       { where, args } =
-        Enum.reduce where, { "", args }, fn
+        Enum.reduce where, { [], args }, fn
           { key, value }, { where, args } when is_atom(key) ->
             args = args ++ [value]
-            where = where <> atom_to_binary(key) <> " = $#{Enum.count args}"
+            where = [ atom_to_binary(key) <> " = $#{Enum.count args}" | where ]
             { where, args }
         end
 
-      query = query <> " WHERE " <> where
+      query = query <> " WHERE " <> Enum.join(where, " and ")
     end
 
     query =
