@@ -7,9 +7,9 @@ defmodule Ecto.Pool do
     :poolboy.start_link(pool_args, worker_args)
   end
 
-  def query(stmt, args // []), do: query(__MODULE__, stmt, args)
+  def query(stmt, args // []) when is_binary(stmt), do: query(__MODULE__, stmt, args)
 
-  def query(pool, stmt, args // []) do
+  def query(pool, stmt, args) when is_atom(pool) and is_binary(stmt) do
     case _equery(pool, stmt, args) do
       { { :insert, _, count }, rows } -> { rows, count }
       { { :select, count }, rows }    -> { rows, count }
@@ -19,9 +19,9 @@ defmodule Ecto.Pool do
     end
   end
 
-  def query!(stmt, args // []), do: query!(__MODULE__, stmt, args)
+  def query!(stmt, args) when is_binary(stmt), do: query!(__MODULE__, stmt, args)
 
-  def query!(pool, stmt, args // []) do
+  def query!(pool, stmt, args // []) when is_atom(pool) and is_binary(stmt) do
     case _equery(pool, stmt, args) do
       { { :insert, _, count }, rows } -> { rows, count }
       { { :select, count }, rows }    -> { rows, count }
