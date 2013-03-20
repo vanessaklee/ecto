@@ -16,6 +16,10 @@ defmodule Ecto.Supervisor do
     [ worker(Ecto.Pool, [], restart: :transient) ]
   end
 
+  def start_child do
+    :supervisor.start_child(__MODULE__, [])
+  end
+
   def start_child(uri) do
     :supervisor.start_child(__MODULE__, [uri])
   end
