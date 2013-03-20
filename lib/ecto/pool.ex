@@ -7,7 +7,9 @@ defmodule Ecto.Pool do
     :poolboy.start_link(pool_args, worker_args)
   end
 
-  def query(pool // __MODULE__, stmt, args // []) do
+  def query(stmt, args // []), do: query(__MODULE__, stmt, args)
+
+  def query(pool, stmt, args // []) do
     case _equery(pool, stmt, args) do
       { { :insert, _, count }, rows } -> { rows, count }
       { { :select, count }, rows }    -> { rows, count }
@@ -16,8 +18,10 @@ defmodule Ecto.Pool do
       other -> other
     end
   end
-  
-  def query!(pool // __MODULE__, stmt, args // []) do
+
+  def query!(stmt, args // []), do: query!(__MODULE__, stmt, args)
+
+  def query!(pool, stmt, args // []) do
     case _equery(pool, stmt, args) do
       { { :insert, _, count }, rows } -> { rows, count }
       { { :select, count }, rows }    -> { rows, count }
