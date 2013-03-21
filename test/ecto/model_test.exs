@@ -31,7 +31,7 @@ defmodule EctoModelTest do
   test "cannot create with existing id" do
     model = TestModel[id: 22, version: 1]
     Ecto.create model
-    assert_raise RuntimeError, fn ->
+    assert_raise Ecto.QueryError, fn ->
       Ecto.create model
     end
   end

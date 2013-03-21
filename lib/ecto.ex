@@ -13,8 +13,8 @@ defmodule Ecto do
     query = "#{select_from(module)} WHERE #{module.__ecto__(:primary_key)} = $1"
 
     case Ecto.Pool.query! query, [id] do
-      { [h], _count } -> module.__ecto__(:allocate, h)
-      { [], 0 } -> nil
+      { _count, [h] } -> module.__ecto__(:allocate, h)
+      { 0, [] } -> nil
     end
   end
 
@@ -58,7 +58,7 @@ defmodule Ecto do
       query = query <> " LIMIT #{limit}"
     end
 
-    { results, _count } = Ecto.Pool.query! query, args
+    { _count, results } = Ecto.Pool.query! query, args
     lc result inlist results, do: module.__ecto__(:allocate, result)
   end
 
@@ -81,7 +81,7 @@ defmodule Ecto do
     if primary_key do
       query = "SELECT EXISTS (SELECT TRUE FROM #{table} WHERE #{primary_key} = $1 LIMIT 1)"
       case Ecto.Pool.query(query, [id]) do
-        { [ { true } ], _count }  -> true
+        { _count, [ { true } ] }  -> true
         _other                    -> false
       end
     else
@@ -106,7 +106,7 @@ defmodule Ecto do
     kv = Enum.map_join List.zip([keys, values]), ",", fn({k, v}) -> "#{k} = #{v}" end
 
     query = "UPDATE #{table} SET #{kv} WHERE #{primary_key} = $#{len(params)+1} RETURNING *"
-    { [result], _count } = Ecto.Pool.query! query, params ++ [id]
+    { _count, [result] } = Ecto.Pool.query! query, params ++ [id]
     module.__ecto__(:allocate, result)
   end
 
@@ -127,7 +127,7 @@ defmodule Ecto do
     keys = Enum.join keys, ","
     values = Enum.join values, ","
 
-    { [result], _count } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING *", params
+    { _count, [result] } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING *", params
     module.__ecto__(:allocate, result)
   end
 
@@ -163,6 +163,6 @@ defmodule Ecto do
     primary_key = module.__ecto__(:primary_key)
     pk_value    = apply(module, primary_key, [record])
 
-    { [], 1 } == Ecto.Pool.query! "DELETE FROM #{table} WHERE #{primary_key} = $1", [pk_value]
+    { 1, [] } = Ecto.Pool.query! "DELETE FROM #{table} WHERE #{primary_key} = $1", [pk_value]
   end
 end

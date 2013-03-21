@@ -1,3 +1,12 @@
+defexception Ecto.QueryError, reason: nil, stmt: nil, args: nil do
+  def message(Ecto.QueryError[reason: reason, stmt: stmt, args: nil]) do
+    "Query failed because #{inspect reason}\n#{stmt}"
+  end
+  def message(Ecto.QueryError[reason: reason, stmt: stmt, args: args]) do
+    "Query failed because #{inspect reason}\n#{stmt}\n#{inspect args}"
+  end
+end
+
 defmodule Ecto.Pool do
   @env_var 'ECTO_URI'
 
@@ -11,23 +20,22 @@ defmodule Ecto.Pool do
 
   def query(pool, stmt, args) when is_atom(pool) and is_binary(stmt) do
     case _equery(pool, stmt, args) do
-      { { :insert, _, count }, rows } -> { rows, count }
-      { { :select, count }, rows }    -> { rows, count }
-      { { :update, count }, rows }    -> { rows, count }
-      { { :delete, count }, rows }    -> { rows, count }
-      other -> other
+      { { :insert, _, count }, rows } -> { count, rows }
+      { { :select, count }, rows }    -> { count, rows }
+      { { :update, count }, rows }    -> { count, rows }
+      { { :delete, count }, rows }    -> { count, rows }
+      { { :create, :table }, _ }      -> :ok
+      { { :drop, :table }, _ }        -> :ok
+      { :error, error }               -> { :error, error }
     end
   end
 
   def query!(stmt, args) when is_binary(stmt), do: query!(__MODULE__, stmt, args)
 
   def query!(pool, stmt, args // []) when is_atom(pool) and is_binary(stmt) do
-    case _equery(pool, stmt, args) do
-      { { :insert, _, count }, rows } -> { rows, count }
-      { { :select, count }, rows }    -> { rows, count }
-      { { :update, count }, rows }    -> { rows, count }
-      { { :delete, count }, rows }    -> { rows, count }
-      { :error, error } -> raise "Query failed because: #{inspect error}"
+    case query(pool, stmt, args) do
+      { :error, reason } -> raise Ecto.QueryError[reason: reason, stmt: stmt, args: args]
+      other              -> other
     end
   end
 

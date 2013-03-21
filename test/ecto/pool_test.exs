@@ -28,11 +28,11 @@ defmodule EctoPoolTest do
   end
 
   test :uri do
-    :application.set_env(Ecto, :uri, "APP_ENV")
+    :application.set_env(:ecto, :uri, "APP_ENV")
     assert "APP_ENV" == Pool.default_uri
   end
 
-  test :named_pool do
-
+  test :query_error_message do
+    assert "Query failed because :foo\nSTMT" == Ecto.QueryError[reason: :foo, stmt: "STMT"].message
   end
 end
