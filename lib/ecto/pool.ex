@@ -62,7 +62,7 @@ defmodule Ecto.Pool do
   end
 
   def default_uri do
-    case :application.get_env(Ecto, :uri) do
+    case :application.get_env(:ecto, :uri) do
       { :ok, uri } -> uri
       _other -> System.get_env("ECTO_URI")
     end
