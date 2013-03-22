@@ -22,32 +22,33 @@ defmodule EctoModelTest do
     :ok
   end
 
-  def model, do: TestModel[id: 1, version: 1]
-
   test :create do
-    assert model == Ecto.save model
-  end
-
-  test "cannot create with existing id" do
-    model = TestModel[id: 22, version: 1]
-    Ecto.create model
+    model = Ecto.save TestModel[version: 1]
+    assert model.id != nil
     assert_raise Ecto.QueryError, fn ->
       Ecto.create model
     end
   end
 
+  test "cannot create with existing id" do
+    model = TestModel[id: 22, version: 1]
+    Ecto.create model
+  end
+
   test :update do
+    model = Ecto.save TestModel[version: 100]
     version2 = model.version 2
     assert version2 == Ecto.save(version2)
   end
 
   test :destroy do
-    d = Ecto.create TestModel[id: 2, version: 1]
+    d = Ecto.create TestModel[id: 3000, version: 1]
     assert Ecto.destroy d
   end
 
   test :get do
-    assert model == Ecto.get TestModel, 1
+    model = Ecto.save TestModel[id: 100, version: 10]
+    assert model == Ecto.get TestModel, 100
     assert nil == Ecto.get TestModel, 666
     assert_raise Ecto.RecordNotFound, fn ->
       Ecto.get! TestModel, 666

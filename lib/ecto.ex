@@ -78,7 +78,7 @@ defmodule Ecto do
     primary_key = module.__ecto__(:primary_key)
     id          = apply(module, primary_key, [record])
 
-    if primary_key do
+    if id do
       query = "SELECT EXISTS (SELECT TRUE FROM #{table} WHERE #{primary_key} = $1 LIMIT 1)"
       case Ecto.Pool.query(query, [id]) do
         { _count, [ { true } ] }  -> true
