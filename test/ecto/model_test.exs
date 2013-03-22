@@ -5,6 +5,8 @@ defmodule TestModel do
   table_name :ecto_test
   primary_key :id
   field :version
+
+  def new?(TestModel[version: 1, id: 1] = m), do: "yup... #{m.id} is new"
 end
 
 defmodule EctoModelTest do
@@ -60,6 +62,8 @@ defmodule EctoModelTest do
                TestModel[id: 101, version: 100],
                TestModel[id: 102, version: 100] ]
     
+    IO.inspect models
+
     Enum.each models, Ecto.save &1
 
     assert models == Ecto.all TestModel, where: [ version: 100 ], order_by: :id
@@ -74,5 +78,9 @@ defmodule EctoModelTest do
 
   test :fields do
     [:id, :version] = TestModel.__ecto__(:fields)
+  end
+
+  test :match_in_def_fun do
+    assert "yup... 1 is new" == TestModel.new? TestModel[id: 1, version: 1]
   end
 end

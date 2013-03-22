@@ -98,7 +98,7 @@ defmodule Ecto do
     module      = elem(record, 0)
     table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
-    keys        = module.__record__(:fields)
+    keys        = module.__ecto__(:fields)
     values      = tl tuple_to_list(record)
     id          = apply(module, primary_key, [record])
 
@@ -118,12 +118,11 @@ defmodule Ecto do
     module      = elem(record, 0)
     table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
-    keys        = module.__record__(:fields)
+    keys        = module.__ecto__(:fields)
     values      = tl tuple_to_list(record)
 
     to_reject        = if apply(module, primary_key, [record]), do: nil, else: primary_key
     { keys, values, params } = generate_changes(keys, values, to_reject, [], [], [])
-
     keys = Enum.join keys, ","
     values = Enum.join values, ","
 
@@ -132,19 +131,23 @@ defmodule Ecto do
   end
 
   # Discard primary key
-  defp generate_changes([{ pk, _ }|tk], [_|tv], pk, keys, values, params) do
+  defp generate_changes([pk|tk], [_|tv], pk, keys, values, params) do
     generate_changes(tk, tv, pk, keys, values, params)
   end
 
-  defp generate_changes([{ :created_at, _ }|tk], [_|tv], pk, keys, values, params) do
+  defp generate_changes(tk, [nil|tv], pk, keys, values, params) do
+    generate_changes(tk, [:null|tv], pk, keys, values, params)
+  end
+
+  defp generate_changes([:created_at|tk], [_|tv], pk, keys, values, params) do
     generate_changes(tk, tv, pk, [ "created_at" | keys ], [ "$#{len(params)+1}" | values ], [ "NOW()" | params ])
   end
 
-  defp generate_changes([{ :updated_at, _ }|tk], [_|tv], pk, keys, values, params) do
+  defp generate_changes([:updated_at|tk], [_|tv], pk, keys, values, params) do
     generate_changes(tk, tv, pk, [ "updated_at" | keys ], [ "$#{len(params)+1}" | values ], [ "NOW()" | params ])
   end
 
-  defp generate_changes([{ key, _ }|tk], [p|tv], pk, keys, values, params) do
+  defp generate_changes([key|tk], [p|tv], pk, keys, values, params) do
     generate_changes(tk, tv, pk, [ atom_to_binary(key) | keys ], [ "$#{len(params)+1}" | values ], [ p | params ])
   end
 
