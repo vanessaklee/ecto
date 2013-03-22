@@ -9,6 +9,12 @@ defmodule TestModel do
   def new?(TestModel[version: 1, id: 1] = m), do: "yup... #{m.id} is new"
 end
 
+defmodule WithDefaults do
+  use Ecto.Model
+  primary_key id: 0
+  field version: 0
+end
+
 defmodule EctoModelTest do
   use ExUnit.Case
 
@@ -61,8 +67,6 @@ defmodule EctoModelTest do
     models = [ TestModel[id: 100, version: 100],
                TestModel[id: 101, version: 100],
                TestModel[id: 102, version: 100] ]
-    
-    IO.inspect models
 
     Enum.each models, Ecto.save &1
 
@@ -82,5 +86,9 @@ defmodule EctoModelTest do
 
   test :match_in_def_fun do
     assert "yup... 1 is new" == TestModel.new? TestModel[id: 1, version: 1]
+  end
+
+  test :field_defaults do
+    assert WithDefaults[id: 0, version: 0] == WithDefaults.new
   end
 end
