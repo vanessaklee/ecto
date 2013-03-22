@@ -50,7 +50,7 @@ defmodule Ecto.Model do
     end
   end
 
-  defmacro primary_key([{ name, default }]) do
+  defmacro primary_key(name, [ default: default ]) do
     quote do
       @ecto_primary_key unquote(name)
       @__record__ { unquote(name), unquote(default) }
@@ -64,7 +64,7 @@ defmodule Ecto.Model do
     end
   end
 
-  defmacro field([{ name, default }]) do
+  defmacro field(name, [ default: default ]) do
     quote do
       @__record__ { unquote(name), unquote(default) }
     end

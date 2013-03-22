@@ -11,8 +11,8 @@ end
 
 defmodule WithDefaults do
   use Ecto.Model
-  primary_key id: 0
-  field version: 0
+  primary_key :id, default: 0
+  field :version, default: 0
 end
 
 defmodule EctoModelTest do
