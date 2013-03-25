@@ -92,13 +92,14 @@ defmodule Ecto do
     table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
     keys        = module.__ecto__(:fields)
+    returning   = returning(keys)
     values      = tl tuple_to_list(record)
     id          = apply(module, primary_key, [record])
 
     { keys, values, params } = generate_changes(keys, values, primary_key, [], [], [])
     kv = Enum.map_join List.zip([keys, values]), ",", fn({k, v}) -> "#{k} = #{v}" end
 
-    query = "UPDATE #{table} SET #{kv} WHERE #{primary_key} = $#{len(params)+1} RETURNING *"
+    query = "UPDATE #{table} SET #{kv} WHERE #{primary_key} = $#{len(params)+1} RETURNING #{returning}"
     { _count, [result] } = Ecto.Pool.query! query, params ++ [id]
     module.__ecto__(:allocate, result)
   end
@@ -112,6 +113,7 @@ defmodule Ecto do
     table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
     keys        = module.__ecto__(:fields)
+    returning   = returning(keys)
     values      = tl tuple_to_list(record)
 
     to_reject        = if apply(module, primary_key, [record]), do: nil, else: primary_key
@@ -119,7 +121,7 @@ defmodule Ecto do
     keys = Enum.join keys, ","
     values = Enum.join values, ","
 
-    { _count, [result] } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING *", params
+    { _count, [result] } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING #{returning}", params
     module.__ecto__(:allocate, result)
   end
 
@@ -159,6 +161,8 @@ defmodule Ecto do
 
     { " WHERE " <> Enum.join(where, " and "), args }
   end
+
+  defp returning(cols), do: Enum.join(Enum.map(cols, to_binary(&1)), ",")
 
   defp len(e), do: Enum.count e
 
