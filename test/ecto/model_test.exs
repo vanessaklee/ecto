@@ -6,7 +6,7 @@ defmodule TestModel do
   primary_key :id
   field :version
 
-  def new?(TestModel[version: 1, id: 1] = m), do: "yup... #{m.id} is new"
+  def new?(TestModel[version: 1] = m), do: "yup... #{m.id} is new"
 end
 
 defmodule WithDefaults do
@@ -47,6 +47,8 @@ defmodule EctoModelTest do
     model = Ecto.save TestModel[version: 100]
     version2 = model.version 2
     assert version2 == Ecto.save(version2)
+    version3 = model.version nil
+    assert version3 == Ecto.save(version3)
   end
 
   test :destroy do
@@ -84,16 +86,8 @@ defmodule EctoModelTest do
     assert models == Ecto.all TestModel, where: [ version: 100 ], order_by: :id, limit: 2
   end
 
-  test :allocate do
-    assert TestModel[id: 1, version: 2] == TestModel.__ecto__(:allocate, {1,2})
-  end
-
-  test :fields do
-    [:id, :version] = TestModel.__ecto__(:fields)
-  end
-
   test :match_in_def_fun do
-    assert "yup... 1 is new" == TestModel.new? TestModel[id: 1, version: 1]
+    assert "yup... 2 is new" == TestModel.new? TestModel[id: 2, version: 1]
   end
 
   test :field_defaults do

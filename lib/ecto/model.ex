@@ -78,7 +78,6 @@ defmodule Ecto.Model do
 
   defmacro __record__(_) do
     record = Module.get_attribute(__CALLER__.module, :__record__)
-    record = Enum.reverse(record)
     Record.deffunctions(record, __CALLER__)
     Record.deftypes(record, [], __CALLER__)
     :ok
@@ -101,9 +100,6 @@ defmodule Ecto.Model do
         pos = pos + 1
         { acc, pos }
     end
-
-    # I don't know why this works the way it does...
-    fields = Enum.reverse(fields)
 
     quote location: :keep do
       # TODO: This should be part of Record itself.
