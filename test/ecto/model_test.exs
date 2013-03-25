@@ -37,7 +37,6 @@ defmodule Ecto.ModelTest do
   use ExUnit.Case
 
   setup_all do
-    Ecto.Pool.start_link
     Ecto.Pool.query %b;
       CREATE TABLE ecto_test (id SERIAL PRIMARY KEY, version INT, name TEXT, comment TEXT);
     :ok
@@ -73,6 +72,17 @@ defmodule Ecto.ModelTest do
     version3 = model.version nil
     assert version3 == Ecto.save(version3)
     assert version3 == Ecto.get TestModel, model.id
+  end
+
+  test :save_many do
+    model1 = TestModel[id: 200, version: 1]
+    model2 = TestModel[id: 201, version: 1]
+    model3 = TestModel[id: 202, version: 1]
+    Ecto.save [ model1, model2, model3 ]
+
+    assert model1 == Ecto.get TestModel, 200
+    assert model2 == Ecto.get TestModel, 201
+    assert model3 == Ecto.get TestModel, 202
   end
 
   test :destroy do
