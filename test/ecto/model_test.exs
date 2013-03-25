@@ -54,6 +54,14 @@ defmodule EctoModelTest do
     assert Ecto.destroy d
   end
 
+  test :destroy_where do
+    version = 9999999
+    Enum.each [1,2,3], fn(_) -> Ecto.create TestModel[ version: version ] end
+    assert 3 == Enum.count Ecto.all(TestModel, where: [ version: version ])
+    Ecto.destroy TestModel, where: [ version: version ]
+    assert 0 == Enum.count Ecto.all(TestModel, where: [ version: version ])
+  end
+
   test :get do
     model = Ecto.save TestModel[id: 100, version: 10]
     assert model == Ecto.get TestModel, 100

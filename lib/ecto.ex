@@ -33,15 +33,8 @@ defmodule Ecto do
     args = []
 
     if where = opts[:where] do
-      { where, args } =
-        Enum.reduce where, { [], args }, fn
-          { key, value }, { where, args } when is_atom(key) ->
-            args = args ++ [value]
-            where = [ atom_to_binary(key) <> " = $#{Enum.count args}" | where ]
-            { where, args }
-        end
-
-      query = query <> " WHERE " <> Enum.join(where, " and ")
+      { where, args } = where_clause(where)
+      query = query <> where
     end
 
     query =
@@ -155,6 +148,18 @@ defmodule Ecto do
     { Enum.reverse(keys), Enum.reverse(values), Enum.reverse(params) }
   end
 
+  def where_clause(opts) do
+    { where, args } =
+      Enum.reduce opts, { [], [] }, fn
+        { key, value }, { where, args } when is_atom(key) ->
+          args = args ++ [value]
+          where = [ atom_to_binary(key) <> " = $#{Enum.count args}" | where ]
+          { where, args }
+      end
+
+    { " WHERE " <> Enum.join(where, " and "), args }
+  end
+
   defp len(e), do: Enum.count e
 
   @doc """
@@ -162,10 +167,18 @@ defmodule Ecto do
   """
   def destroy(record) do
     module      = elem(record, 0)
-    table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
     pk_value    = apply(module, primary_key, [record])
 
-    { 1, [] } = Ecto.Pool.query! "DELETE FROM #{table} WHERE #{primary_key} = $1", [pk_value]
+    1 == destroy(module, where: [ { primary_key, pk_value } ])
+  end
+
+  def destroy(module, [ where: opts ]) do
+    table  = module.__ecto__(:table)
+    
+    { where, args} = where_clause(opts)
+    
+    { count, [] } = Ecto.Pool.query "DELETE FROM #{table}#{where}", args
+    count
   end
 end
