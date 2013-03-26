@@ -8,18 +8,21 @@ defexception Ecto.QueryError, reason: nil, stmt: nil, args: nil do
 end
 
 defmodule Ecto.Pool do
-  @env_var 'ECTO_URI'
+  @env_var "ECTO_URI"
 
   def start_link, do: start_link(default_uri)
   def start_link(uri) do
-    {pool_args, worker_args} = parse(uri)
+    { pool_args, worker_args } = parse(uri)
     :poolboy.start_link(pool_args, worker_args)
   end
 
-  def query(stmt, args // []) when is_binary(stmt), do: query(__MODULE__, stmt, args)
+  def query(stmt), do: query(__MODULE__, stmt, [])
 
-  def query(pool, stmt, args) when is_atom(pool) and is_binary(stmt) do
-    case _equery(pool, stmt, args) do
+  def query(stmt, args) when is_binary(stmt), do: query(__MODULE__, stmt, args)
+  def query(pool, stmt), do: query(__MODULE__, stmt, [])
+
+  def query(pool, stmt, args) when is_atom(pool) and is_binary(stmt) and is_list(args) do
+    case do_query(pool, stmt, args) do
       { { :insert, _, count }, rows } -> { count, rows }
       { { :select, count }, rows }    -> { count, rows }
       { { :update, count }, rows }    -> { count, rows }
@@ -30,19 +33,22 @@ defmodule Ecto.Pool do
     end
   end
 
-  def query!(stmt, args) when is_binary(stmt), do: query!(__MODULE__, stmt, args)
+  def query!(stmt), do: query!(__MODULE__, stmt, [])
 
-  def query!(pool, stmt, args // []) when is_atom(pool) and is_binary(stmt) do
+  def query!(stmt, args) when is_binary(stmt), do: query!(__MODULE__, stmt, args)
+  def query!(pool, stmt), do: query!(__MODULE__, stmt, [])
+
+  def query!(pool, stmt, args) when is_atom(pool) and is_binary(stmt) and is_list(args) do
     case query(pool, stmt, args) do
       { :error, reason } -> raise Ecto.QueryError[reason: reason, stmt: stmt, args: args]
       other              -> other
     end
   end
 
-  defp _equery(pool, stmt, args) do
-    :poolboy.transaction(pool, fn(conn) ->
+  defp do_query(pool, stmt, args) do
+    :poolboy.transaction pool, fn(conn) ->
       :pgsql_connection.extended_query(stmt, args, { :pgsql_connection, conn })
-    end)
+    end
   end
 
   # for supervisor
@@ -58,21 +64,21 @@ defmodule Ecto.Pool do
 
     pool_args = Keyword.merge [ name: { :local, name }, worker_module: :pgsql_connection ], opts
     
-    worker_args = Enum.map [
-      host: info[:host],
+    worker_args = [
+      host:     binary_to_list(info[:host]),
       database: info[:db],
-      user: info[:user],
+      user:     info[:user],
       password: info[:pass],
       port:     info[:port]
-    ], fn({k,v}) when is_binary(v) -> {k, binary_to_list(v)}; (o) -> o end
+    ]
 
-    {pool_args, worker_args}
+    { pool_args, worker_args }
   end
 
   def default_uri do
     case :application.get_env(:ecto, :uri) do
       { :ok, uri } -> uri
-      _other -> System.get_env("ECTO_URI")
+      _other -> System.get_env(@env_var)
     end
   end
 end

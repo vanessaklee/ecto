@@ -9,14 +9,14 @@ defmodule EctoPoolTest do
     pool_args = [ size: 5, max_overflow: 10, name: { :local, Ecto.Pool}, worker_module: :pgsql_connection ]
     worker_args = [
       host:     'localhost',
-      database: 'db',
-      user:     'user',
-      password: 'pass',
-      port:      5432
+      database: "db",
+      user:     "user",
+      password: "pass",
+      port:     5432
     ]
     
     uri = "ecto+postgres://user:pass@localhost/db?timeout=5000&size=5&overflow=10"
-    {actual_pool_args, actual_worker_args} = Pool.parse uri
+    { actual_pool_args, actual_worker_args } = Pool.parse uri
     assert Keyword.equal? pool_args, actual_pool_args
     assert Keyword.equal? worker_args, actual_worker_args
   end

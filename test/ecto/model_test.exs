@@ -1,5 +1,7 @@
 Code.require_file "../../test_helper.exs", __FILE__
 
+alias Validatex, as: V
+
 defmodule TestModel do
   use Ecto.Model
   table_name :ecto_test
@@ -15,18 +17,30 @@ defmodule WithDefaults do
   field :version, default: 0
 end
 
+defmodule WithValidations do
+  use Ecto.Model
+  table_name :ecto_test
+  primary_key :id
+  field :name, validator: V.Type.new(is: :string)
+end
+
 defmodule EctoModelTest do
   use ExUnit.Case
 
   setup_all do
     Ecto.Pool.start_link
     Ecto.Pool.query %b;
-      CREATE TABLE ecto_test ( id serial primary key, version int );
+      CREATE TABLE ecto_test (id SERIAL PRIMARY KEY, version INT, name TEXT);
+    :ok
+  end
+
+  setup do
+    Ecto.Pool.query "DELETE FROM ecto_test *"
     :ok
   end
 
   teardown_all do
-    Ecto.Pool.query "drop table ecto_test"
+    Ecto.Pool.query "DROP TABLE ecto_test"
     :ok
   end
 
@@ -92,5 +106,10 @@ defmodule EctoModelTest do
 
   test :field_defaults do
     assert WithDefaults[id: 0, version: 0] == WithDefaults.new
+  end
+
+  test :validations do
+    model = WithValidations[id: 1, name: 31337]
+    assert {:invalid, _ } = Ecto.create model
   end
 end

@@ -17,6 +17,7 @@ defmodule Ecto.Mixfile do
   # { :foobar, "0.1", git: "https://github.com/elixir-lang/foobar.git" }
   defp deps do
     [ { :poolboy, github: "devinus/poolboy" },
-      { :pgsql, github: "semiocast/pgsql" } ]
+      { :pgsql, github: "semiocast/pgsql" },
+      { :validatex, github: "yrashk/validatex" } ]
   end
 end

@@ -37,7 +37,7 @@ defmodule Ecto.Model do
 
       @ecto_primary_key :id
 
-      Enum.each [:__record__],
+      Enum.each [:__record__, :ecto_validations],
         Module.register_attribute(__MODULE__, &1, accumulate: true, persist: false)
 
       import Ecto.Model
@@ -50,29 +50,22 @@ defmodule Ecto.Model do
     end
   end
 
-  defmacro primary_key(name, [ default: default ]) do
+  defmacro primary_key(name, opts // []) do
+    default = opts[:default]
     quote do
       @ecto_primary_key unquote(name)
       @__record__ { unquote(name), unquote(default) }
     end
   end
-  
-  defmacro primary_key(name) do
-    quote do
-      @ecto_primary_key unquote(name)
-      @__record__ { unquote(name), nil }
-    end
-  end
 
-  defmacro field(name, [ default: default ]) do
+  defmacro field(name, opts // []) do
+    default = opts[:default]
+    validator = opts[:validator]
     quote do
       @__record__ { unquote(name), unquote(default) }
-    end
-  end
-
-  defmacro field(name) do
-    quote do
-      @__record__ { unquote(name), nil }
+      if unquote(validator) do
+        @ecto_validations { unquote(name), quote do: unquote(validator) }
+      end
     end
   end
 
@@ -86,6 +79,7 @@ defmodule Ecto.Model do
   defmacro __ecto__(_) do
     table       = Module.get_attribute(__CALLER__.module, :ecto_table) |> to_binary
     primary_key = Module.get_attribute(__CALLER__.module, :ecto_primary_key)
+    validations = Module.get_attribute(__CALLER__.module, :ecto_validations)
 
     fields = Module.get_attribute(__CALLER__.module, :__record__)
     fields = Enum.map fields, elem(&1, 0)
@@ -122,6 +116,7 @@ defmodule Ecto.Model do
       def __ecto__(:table),       do: unquote(table)
       def __ecto__(:primary_key), do: unquote(primary_key)
       def __ecto__(:fields),      do: unquote(fields)
+      def __ecto__(:validations), do: unquote(validations)
     end
   end
 end

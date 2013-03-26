@@ -1,4 +1,6 @@
 defmodule Ecto do
+  alias Validatex, as: V
+
   defexception RecordNotFound, [:module, :id] do
     def message(exception) do
       "could not find record #{inspect exception.module} with id #{inspect exception.id}"
@@ -65,7 +67,7 @@ defmodule Ecto do
   @doc """
   check the table for the primary key
   """
-  def exists?(record) when is_tuple(record) do
+  def exists?(record) when is_record(record) do
     module      = elem(record, 0)
     table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
@@ -83,11 +85,11 @@ defmodule Ecto do
 
   end
 
-  def save(record) when is_tuple(record) do
+  def save(record) when is_record(record) do
     if exists?(record), do: update(record), else: create(record)
   end
 
-  def update(record) when is_tuple(record) do
+  def update(record) when is_record(record) do
     module      = elem(record, 0)
     table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
@@ -108,21 +110,35 @@ defmodule Ecto do
   Saves a record issuing an insert or an
   updated based on the existance of an ID.
   """
-  def create(record) when is_tuple(record) do
+  def create(record) when is_record(record) do
     module      = elem(record, 0)
     table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
     keys        = module.__ecto__(:fields)
+    validations = module.__ecto__(:validations)
     returning   = returning(keys)
     values      = tl tuple_to_list(record)
 
-    to_reject        = if apply(module, primary_key, [record]), do: nil, else: primary_key
-    { keys, values, params } = generate_changes(keys, values, to_reject, [], [], [])
-    keys = Enum.join keys, ","
-    values = Enum.join values, ","
+    plan = lc { name, validator } inlist validations do
+      { name, apply(module, name, [record]), validator }
+    end
 
-    { _count, [result] } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING #{returning}", params
-    module.__ecto__(:allocate, result)
+    case V.validate(plan) do
+      [] ->
+        to_reject = if apply(module, primary_key, [record]), do: nil, else: primary_key
+        { keys, values, params } = generate_changes(keys, values, to_reject, [], [], [])
+        keys = Enum.join keys, ","
+        values = Enum.join values, ","
+
+        { _count, [result] } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING #{returning}", params
+        module.__ecto__(:allocate, result)
+      errors ->
+        { :invalid, errors }
+    end
+  end
+
+  def create!(record) when is_record(record) do
+
   end
 
   # Discard primary key
@@ -178,7 +194,7 @@ defmodule Ecto do
   end
 
   def destroy(module, [ where: opts ]) do
-    table  = module.__ecto__(:table)
+    table = module.__ecto__(:table)
     
     { where, args} = where_clause(opts)
     
