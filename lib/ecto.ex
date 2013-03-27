@@ -7,16 +7,22 @@ defmodule Ecto do
     end
   end
 
+  defexception RecordInvalid, [:errors] do
+    def message(exception) do
+      "Validation failed: #{inspect exception.errors}"
+    end
+  end
+
   @doc """
   Gets a record given by the module and id.
   Returns nil if one is not found.
   """
   def get(module, id) do
-    query = "#{select_from(module)} WHERE #{module.__ecto__(:primary_key)} = $1"
+    query = "#{select_from(module)} WHERE #{module.__ecto__(:primary_key)} = $1 LIMIT 1"
 
     case Ecto.Pool.query! query, [id] do
-      { _count, [h] } -> module.__ecto__(:allocate, h)
-      { 0, [] } -> nil
+      { 0, _ } -> nil
+      { _, [h] } -> module.__ecto__(:allocate, h)
     end
   end
 
@@ -61,7 +67,7 @@ defmodule Ecto do
     fields = module.__ecto__(:fields)
     cols   = Enum.join(Enum.map(fields, to_binary(&1)), ",")
     table  = module.__ecto__(:table)
-    "SELECT #{cols} from #{table}"
+    "SELECT #{cols} FROM #{table}"
   end
 
   @doc """
@@ -85,25 +91,55 @@ defmodule Ecto do
 
   end
 
-  def save(record) when is_record(record) do
+  def valid?(record) do
+    module      = elem(record, 0)
+    validations = module.__ecto__(:validations)
+
+    plan = lc { name, validator } inlist validations do
+      { name, apply(module, name, [record]), validator }
+    end
+
+    V.validate(plan) == []
+  end
+
+  def save(record) do
     if exists?(record), do: update(record), else: create(record)
+  end
+
+  def save!(record) do
+    case save(record) do
+      { :invalid, errors } ->
+        raise RecordInvalid.new errors: errors
+      valid ->
+        valid
+    end
   end
 
   def update(record) when is_record(record) do
     module      = elem(record, 0)
-    table       = module.__ecto__(:table)
-    primary_key = module.__ecto__(:primary_key)
-    keys        = module.__ecto__(:fields)
-    returning   = returning(keys)
-    values      = tl tuple_to_list(record)
-    id          = apply(module, primary_key, [record])
+    validations = module.__ecto__(:validations)
 
-    { keys, values, params } = generate_changes(keys, values, primary_key, [], [], [])
-    kv = Enum.map_join List.zip([keys, values]), ",", fn({k, v}) -> "#{k} = #{v}" end
+    plan = lc { name, validator } inlist validations do
+      { name, apply(module, name, [record]), validator }
+    end
 
-    query = "UPDATE #{table} SET #{kv} WHERE #{primary_key} = $#{len(params)+1} RETURNING #{returning}"
-    { _count, [result] } = Ecto.Pool.query! query, params ++ [id]
-    module.__ecto__(:allocate, result)
+    case V.validate(plan) do
+      [] ->
+        table       = module.__ecto__(:table)
+        primary_key = module.__ecto__(:primary_key)
+        keys        = module.__ecto__(:fields)
+        returning   = returning(keys)
+        values      = tl tuple_to_list(record)
+        id          = apply(module, primary_key, [record])
+        { keys, values, params } = generate_changes(keys, values, primary_key, [], [], [])
+        kv = Enum.map_join List.zip([keys, values]), ",", fn({k, v}) -> "#{k} = #{v}" end
+
+        query = "UPDATE #{table} SET #{kv} WHERE #{primary_key} = $#{len(params)+1} RETURNING #{returning}"
+        { _count, [result] } = Ecto.Pool.query! query, params ++ [id]
+        module.__ecto__(:allocate, result)
+      errors ->
+        { :invalid, errors }
+    end
   end
 
   @doc """
@@ -112,12 +148,7 @@ defmodule Ecto do
   """
   def create(record) when is_record(record) do
     module      = elem(record, 0)
-    table       = module.__ecto__(:table)
-    primary_key = module.__ecto__(:primary_key)
-    keys        = module.__ecto__(:fields)
     validations = module.__ecto__(:validations)
-    returning   = returning(keys)
-    values      = tl tuple_to_list(record)
 
     plan = lc { name, validator } inlist validations do
       { name, apply(module, name, [record]), validator }
@@ -125,6 +156,12 @@ defmodule Ecto do
 
     case V.validate(plan) do
       [] ->
+        table       = module.__ecto__(:table)
+        primary_key = module.__ecto__(:primary_key)
+        keys        = module.__ecto__(:fields)
+        returning   = returning(keys)
+        values      = tl tuple_to_list(record)
+
         to_reject = if apply(module, primary_key, [record]), do: nil, else: primary_key
         { keys, values, params } = generate_changes(keys, values, to_reject, [], [], [])
         keys = Enum.join keys, ","
@@ -135,10 +172,6 @@ defmodule Ecto do
       errors ->
         { :invalid, errors }
     end
-  end
-
-  def create!(record) when is_record(record) do
-
   end
 
   # Discard primary key
@@ -175,7 +208,7 @@ defmodule Ecto do
           { where, args }
       end
 
-    { " WHERE " <> Enum.join(where, " and "), args }
+    { " WHERE " <> Enum.join(where, " AND "), args }
   end
 
   defp returning(cols), do: Enum.join(Enum.map(cols, to_binary(&1)), ",")

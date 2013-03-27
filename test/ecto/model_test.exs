@@ -110,6 +110,11 @@ defmodule EctoModelTest do
 
   test :validations do
     model = WithValidations[id: 1, name: 31337]
-    assert {:invalid, _ } = Ecto.create model
+
+    assert not Ecto.valid?(model)
+
+    assert_raise Ecto.RecordInvalid, fn ->
+      Ecto.save! model
+    end
   end
 end
