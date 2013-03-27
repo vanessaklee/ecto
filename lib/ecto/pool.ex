@@ -19,7 +19,7 @@ defmodule Ecto.Pool do
   def query(stmt), do: query(__MODULE__, stmt, [])
 
   def query(stmt, args) when is_binary(stmt), do: query(__MODULE__, stmt, args)
-  def query(pool, stmt), do: query(__MODULE__, stmt, [])
+  def query(pool, stmt), do: query(pool, stmt, [])
 
   def query(pool, stmt, args) when is_atom(pool) and is_binary(stmt) and is_list(args) do
     case do_query(pool, stmt, args) do
@@ -36,7 +36,7 @@ defmodule Ecto.Pool do
   def query!(stmt), do: query!(__MODULE__, stmt, [])
 
   def query!(stmt, args) when is_binary(stmt), do: query!(__MODULE__, stmt, args)
-  def query!(pool, stmt), do: query!(__MODULE__, stmt, [])
+  def query!(pool, stmt), do: query!(pool, stmt, [])
 
   def query!(pool, stmt, args) when is_atom(pool) and is_binary(stmt) and is_list(args) do
     case query(pool, stmt, args) do
