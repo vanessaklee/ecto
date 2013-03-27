@@ -22,7 +22,7 @@ defmodule Ecto do
 
     case Ecto.Pool.query! query, [id] do
       { 0, _ } -> nil
-      { _, [h] } -> module.__ecto__(:allocate, h)
+      { _, [h] } -> module.__ecto__(:allocate, null_to_nil(h))
     end
   end
 
@@ -60,7 +60,7 @@ defmodule Ecto do
     end
 
     { _count, results } = Ecto.Pool.query! query, args
-    lc result inlist results, do: module.__ecto__(:allocate, result)
+    lc result inlist results, do: module.__ecto__(:allocate, null_to_nil(result))
   end
 
   defp select_from(module) do
@@ -128,15 +128,16 @@ defmodule Ecto do
         table       = module.__ecto__(:table)
         primary_key = module.__ecto__(:primary_key)
         keys        = module.__ecto__(:fields)
+        skip        = module.__ecto__(:skip_on_update)
         returning   = returning(keys)
         values      = tl tuple_to_list(record)
         id          = apply(module, primary_key, [record])
-        { keys, values, params } = generate_changes(keys, values, primary_key, [], [], [])
+        { keys, values, params } = generate_changes(keys, values, skip, [], [], [])
         kv = Enum.map_join List.zip([keys, values]), ",", fn({k, v}) -> "#{k} = #{v}" end
 
         query = "UPDATE #{table} SET #{kv} WHERE #{primary_key} = $#{len(params)+1} RETURNING #{returning}"
         { _count, [result] } = Ecto.Pool.query! query, params ++ [id]
-        module.__ecto__(:allocate, result)
+        module.__ecto__(:allocate, null_to_nil(result))
       errors ->
         { :invalid, errors }
     end
@@ -162,40 +163,45 @@ defmodule Ecto do
         returning   = returning(keys)
         values      = tl tuple_to_list(record)
 
-        to_reject = if apply(module, primary_key, [record]), do: nil, else: primary_key
-        { keys, values, params } = generate_changes(keys, values, to_reject, [], [], [])
+        skip = if apply(module, primary_key, [record]), do: nil, else: [primary_key]
+        { keys, values, params } = generate_changes(keys, values, skip, [], [], [])
         keys = Enum.join keys, ","
         values = Enum.join values, ","
 
         { _count, [result] } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING #{returning}", params
-        module.__ecto__(:allocate, result)
+        module.__ecto__(:allocate, null_to_nil(result))
       errors ->
         { :invalid, errors }
     end
   end
 
+  defp null_to_nil(t) when is_tuple(t), do: null_to_nil(tuple_to_list(t),[])
+  defp null_to_nil([],acc),             do: list_to_tuple Enum.reverse(acc)
+  defp null_to_nil([:null|t],acc),      do: null_to_nil(t, [nil|acc])
+  defp null_to_nil([o|t], acc),         do: null_to_nil(t, [o|acc])
+
   # Discard primary key
-  defp generate_changes([pk|tk], [_|tv], pk, keys, values, params) do
-    generate_changes(tk, tv, pk, keys, values, params)
+  defp generate_changes([k|tk], [_|tv], [k|ts], keys, values, params) do
+    generate_changes(tk, tv, ts, keys, values, params)
   end
 
-  defp generate_changes(tk, [nil|tv], pk, keys, values, params) do
-    generate_changes(tk, [:null|tv], pk, keys, values, params)
+  defp generate_changes(tk, [nil|tv], sk, keys, values, params) do
+    generate_changes(tk, [:null|tv], sk, keys, values, params)
   end
 
-  defp generate_changes([:created_at|tk], [_|tv], pk, keys, values, params) do
-    generate_changes(tk, tv, pk, [ "created_at" | keys ], [ "$#{len(params)+1}" | values ], [ "NOW()" | params ])
+  defp generate_changes([:created_at|tk], [_|tv], sk, keys, values, params) do
+    generate_changes(tk, tv, sk, [ "created_at" | keys ], [ "$#{len(params)+1}" | values ], [ "NOW()" | params ])
   end
 
-  defp generate_changes([:updated_at|tk], [_|tv], pk, keys, values, params) do
-    generate_changes(tk, tv, pk, [ "updated_at" | keys ], [ "$#{len(params)+1}" | values ], [ "NOW()" | params ])
+  defp generate_changes([:updated_at|tk], [_|tv], sk, keys, values, params) do
+    generate_changes(tk, tv, sk, [ "updated_at" | keys ], [ "$#{len(params)+1}" | values ], [ "NOW()" | params ])
   end
 
-  defp generate_changes([key|tk], [p|tv], pk, keys, values, params) do
-    generate_changes(tk, tv, pk, [ atom_to_binary(key) | keys ], [ "$#{len(params)+1}" | values ], [ p | params ])
+  defp generate_changes([key|tk], [p|tv], sk, keys, values, params) do
+    generate_changes(tk, tv, sk, [ atom_to_binary(key) | keys ], [ "$#{len(params)+1}" | values ], [ p | params ])
   end
 
-  defp generate_changes([], [], _pk, keys, values, params) do
+  defp generate_changes([], [], _sk, keys, values, params) do
     { Enum.reverse(keys), Enum.reverse(values), Enum.reverse(params) }
   end
 

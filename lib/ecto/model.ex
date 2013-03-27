@@ -37,7 +37,7 @@ defmodule Ecto.Model do
 
       @ecto_primary_key :id
 
-      Enum.each [:__record__, :ecto_validations],
+      Enum.each [:__record__, :ecto_validations, :ecto_skip_on_update],
         Module.register_attribute(__MODULE__, &1, accumulate: true, persist: false)
 
       import Ecto.Model
@@ -61,10 +61,14 @@ defmodule Ecto.Model do
   defmacro field(name, opts // []) do
     default = opts[:default]
     validator = opts[:validator]
+    updatable = Keyword.get opts, :updatable, true
     quote do
       @__record__ { unquote(name), unquote(default) }
       if unquote(validator) do
         @ecto_validations { unquote(name), quote do: unquote(validator) }
+      end
+      if not unquote(updatable) do
+        @ecto_skip_on_update unquote(name)
       end
     end
   end
@@ -77,9 +81,10 @@ defmodule Ecto.Model do
   end
 
   defmacro __ecto__(_) do
-    table       = Module.get_attribute(__CALLER__.module, :ecto_table) |> to_binary
-    primary_key = Module.get_attribute(__CALLER__.module, :ecto_primary_key)
-    validations = Module.get_attribute(__CALLER__.module, :ecto_validations)
+    table          = Module.get_attribute(__CALLER__.module, :ecto_table) |> to_binary
+    primary_key    = Module.get_attribute(__CALLER__.module, :ecto_primary_key)
+    validations    = Module.get_attribute(__CALLER__.module, :ecto_validations)
+    skip_on_update = Module.get_attribute(__CALLER__.module, :ecto_skip_on_update)
 
     fields = Module.get_attribute(__CALLER__.module, :__record__)
     fields = Enum.map fields, elem(&1, 0)
@@ -112,11 +117,12 @@ defmodule Ecto.Model do
         __MODULE__[unquote(allocate_fields2)]
       end
 
-      def __ecto__(key, _record), do: __ecto__(key)
-      def __ecto__(:table),       do: unquote(table)
-      def __ecto__(:primary_key), do: unquote(primary_key)
-      def __ecto__(:fields),      do: unquote(fields)
-      def __ecto__(:validations), do: unquote(validations)
+      def __ecto__(key, _record),    do: __ecto__(key)
+      def __ecto__(:table),          do: unquote(table)
+      def __ecto__(:primary_key),    do: unquote(primary_key)
+      def __ecto__(:fields),         do: unquote(fields)
+      def __ecto__(:validations),    do: unquote(validations)
+      def __ecto__(:skip_on_update), do: unquote(skip_on_update)
     end
   end
 end

@@ -24,13 +24,22 @@ defmodule WithValidations do
   field :name, validator: V.Type.new(is: :string)
 end
 
+defmodule WithUpdatable do
+  use Ecto.Model
+  table_name :ecto_test
+  primary_key :id
+  field :version
+  field :name, updatable: false
+  field :comment
+end
+
 defmodule EctoModelTest do
   use ExUnit.Case
 
   setup_all do
     Ecto.Pool.start_link
     Ecto.Pool.query %b;
-      CREATE TABLE ecto_test (id SERIAL PRIMARY KEY, version INT, name TEXT);
+      CREATE TABLE ecto_test (id SERIAL PRIMARY KEY, version INT, name TEXT, comment TEXT);
     :ok
   end
 
@@ -63,6 +72,7 @@ defmodule EctoModelTest do
     assert version2 == Ecto.save(version2)
     version3 = model.version nil
     assert version3 == Ecto.save(version3)
+    assert version3 == Ecto.get TestModel, model.id
   end
 
   test :destroy do
@@ -116,5 +126,24 @@ defmodule EctoModelTest do
     assert_raise Ecto.RecordInvalid, fn ->
       Ecto.save! model
     end
+  end
+
+  test :updatable do
+    model = WithUpdatable[id: 1, version: 1, name: "NAME", comment: "CHANGE ME!"]
+    model = Ecto.create model
+    model = model.version 2
+    model = model.name "NEW NAME"
+    model = model.comment "CHANGED!"
+    assert WithUpdatable[id: 1, version: 2, name: "NAME", comment: "CHANGED!"] = Ecto.save model
+  end
+
+  test :null_to_nil do
+    model = WithUpdatable[id: 1, version: 1]
+    # no nulls at save
+    assert model == Ecto.save model
+    model2 = model.version 2
+    # no nulls at update
+    assert model2 == Ecto.save model2
+    assert [model] == Ecto.all WithUpdatable, where: [ id: 1 ]
   end
 end
