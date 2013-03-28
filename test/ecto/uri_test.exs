@@ -13,7 +13,7 @@ defmodule URI.ParserTest do
     expected = [ host: "localhost",
                  port: 5432,
                  db:   "thedatabase",
-                 user: nil,
+                 user: System.get_env("USER"),
                  pass: nil ]
     assert Keyword.equal?(expected, actual)
   end

@@ -8,9 +8,10 @@ defmodule Ecto.URI do
   end
   
   def default_port(), do: 5432
+  def default_user(), do: System.get_env("USER")
 
   def parse(<<"ecto+postgres://", rest :: binary>> = uri) do
-    info = [ host: nil, port: 5432, db: nil, user: nil, pass: nil ]
+    info = [ host: nil, port: default_port, db: nil, user: default_user, pass: nil ]
     case parse_user(rest, "", info) do
       {:error, reason} -> raise ParseError.new uri: uri, reason: reason
       success -> success
