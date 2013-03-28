@@ -144,6 +144,6 @@ defmodule EctoModelTest do
     model2 = model.version 2
     # no nulls at update
     assert model2 == Ecto.save model2
-    assert [model] == Ecto.all WithUpdatable, where: [ id: 1 ]
+    assert [model2] == Ecto.all WithUpdatable, where: [ id: 1 ]
   end
 end
