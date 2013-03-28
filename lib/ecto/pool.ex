@@ -45,6 +45,12 @@ defmodule Ecto.Pool do
     end
   end
 
+  def squery(pool // __MODULE__, stmt) do
+    :poolboy.transaction pool, fn(conn) ->
+      :pgsql_connection.simple_query(stmt, { :pgsql_connection, conn })
+    end
+  end
+
   defp do_query(pool, stmt, args) do
     :poolboy.transaction pool, fn(conn) ->
       :pgsql_connection.extended_query(stmt, args, { :pgsql_connection, conn })
