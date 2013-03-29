@@ -33,7 +33,7 @@ defmodule WithUpdatable do
   field :comment
 end
 
-defmodule EctoModelTest do
+defmodule Ecto.ModelTest do
   use ExUnit.Case
 
   setup_all do
