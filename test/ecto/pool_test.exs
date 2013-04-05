@@ -1,6 +1,6 @@
 Code.require_file "../../test_helper.exs", __FILE__
 
-defmodule EctoPoolTest do
+defmodule Ecto.PoolTest do
   use ExUnit.Case
 
   alias Ecto.Pool, as: Pool

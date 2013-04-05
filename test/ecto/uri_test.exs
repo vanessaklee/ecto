@@ -1,6 +1,6 @@
 Code.require_file "../../test_helper.exs", __FILE__
 
-defmodule URI.ParserTest do
+defmodule Ecto.URITest do
   use ExUnit.Case
   alias Ecto.URI, as: Parser
   alias Ecto.URI.ParseError, as: ParseError
