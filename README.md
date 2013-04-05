@@ -96,25 +96,5 @@ Ecto.destroy MyModel[id: 1]
 
 ## todo
 
-- Don't connect on star-up, only on Ecto.connect
 - Add adapters for different backends (redis, elastic?)
-  - postgres://...
-  - redis://...
-  - elastic://...
-- validation (probably using [validatex](https://github.com/yrashk/validatex))
 - Some other cool stuff that hasn't been even been invented...yet
-
-## Acknowledgements
-
-Most of this work was provided via gist by Jose Valim. Thanks, Jose. I hope
-you don't mind : ). Thanks to [Devinus][1] and friends
-for [poolboy][2]. Thanks to [Will Glozer][2] for [epgsql][4], too.
-
-Also, thanks to me for not being as lazy as I'd prefer. I love programming,
-even though I'm not very good at it. Sure hope to get better, though. Happy
-to hear comments see pull requests
-
-[1]: https://github.com/devinus "devinus on github"
-[2]: https://github.com/devinus/poolboy "poolboy on github"
-[3]: https://github.com/wg "wg on github"
-[4]: https://github.com/wg/epgsql
