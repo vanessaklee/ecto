@@ -5,8 +5,19 @@ defmodule Ecto.PoolTest do
 
   alias Ecto.Pool, as: Pool
 
+  setup_all do
+    Pool.query "CREATE TABLE txn_test(txn integer);"
+    :ok
+  end
+  
+
+  teardown_all do
+    Pool.query "DROP TABLE txn_test;"
+    :ok
+  end
+
   test :args do
-    pool_args = [ size: 5, max_overflow: 10, name: { :local, Ecto.Pool}, worker_module: :pgsql_connection ]
+    pool_args = [ size: 5, max_overflow: 10, name: { :local, Pool }, worker_module: :pgsql_connection ]
     worker_args = [
       host:     'localhost',
       database: "db",
@@ -21,15 +32,21 @@ defmodule Ecto.PoolTest do
     assert Keyword.equal? worker_args, actual_worker_args
   end
 
-  test :name_in_uri do
-    uri = "ecto+postgres://user:pass@localhost/db?timeout=5000&size=5&overflow=10&name=gary"
-    {pool_args, _} = Pool.parse uri
-    assert { :local, :gary } == Keyword.get pool_args, :name
-  end
+  test :transaction do
+    assert { :error, RuntimeError[message: "Foo!"] } == Pool.transaction fn(conn) ->
+      Pool.query(conn, "insert into txn_test(txn) values(1)")
+      raise "Foo!"
+    end
 
-  test :uri do
-    :application.set_env(:ecto, :uri, "APP_ENV")
-    assert "APP_ENV" == Pool.default_uri
+    assert { 1, [] } == Pool.transaction fn(conn) ->
+      Pool.query(conn, "insert into txn_test(txn) values(1)")
+      Pool.query(conn, "insert into txn_test(txn) values(2)")
+    end
+
+    assert { :error, :bad_match } == Pool.transaction fn(conn) ->
+      Pool.query(conn, "select 1+1")
+      raise :bad_match
+    end
   end
 
   test :query_error_message do

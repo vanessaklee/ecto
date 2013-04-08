@@ -41,14 +41,14 @@ defmodule Ecto.URITest do
   end
 
   test :parse_options do
-    url      = "ecto+postgres://user:pass@localhost/thedatabase?size=10&overflow=5&shoe=14&name=foo"
+    url      = "ecto+postgres://user:pass@localhost/thedatabase?size=10&overflow=5&shoe=14"
     actual   = Parser.parse(url)
     expected = [ host: "localhost",
                  port: 5432, 
                  db:   "thedatabase",
                  user: "user",
                  pass: "pass",
-                 opts: [ size: 10, max_overflow: 5, name: :foo ]]
+                 opts: [ size: 10, max_overflow: 5 ]]
     assert Keyword.equal?(expected, actual)
   end
 

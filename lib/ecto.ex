@@ -1,5 +1,6 @@
 defmodule Ecto do
   alias Validatex, as: V
+  alias Ecto.Pool, as: Pool
 
   defexception RecordNotFound, [:module, :id] do
     def message(exception) do
@@ -17,10 +18,18 @@ defmodule Ecto do
   Gets a record given by the module and id.
   Returns nil if one is not found.
   """
-  def get(module, id) do
+  def get(module, id) when is_atom(module) do
+    Pool.transaction fn(conn) -> get(conn, module, id) end
+  end
+  
+  def get(conn, module, id) when is_pid(conn) and is_atom(module) do
+    get(conn, module, id, :query)
+  end
+
+  def get(conn, module, id, query_fun) when is_pid(conn) and is_atom(module) and is_atom(query_fun) do
     query = "#{select_from(module)} WHERE #{module.__ecto__(:primary_key)} = $1 LIMIT 1"
 
-    case Ecto.Pool.query! query, [id] do
+    case apply(Pool, query_fun, [conn, query, [id]]) do
       { 0, _ } -> nil
       { _, [h] } -> module.__ecto__(:allocate, null_to_nil(h))
     end
@@ -29,14 +38,21 @@ defmodule Ecto do
   @doc """
   Gets a record. Raises an exception if one is not found.
   """
-  def get!(module, id) do
-    get(module, id) || raise Ecto.RecordNotFound, module: module, id: id
+  def get!(module, id) when is_atom(module) do
+    Pool.transaction! fn(conn) -> 
+      get(conn, module, id, :query!) || raise Ecto.RecordNotFound, module: module, id: id
+    end
   end
 
   @doc """
   Gets all records that matches the set of conditions.
   """
-  def all(module, opts // []) do
+  def all(module) when is_atom(module), do: all(module, [])
+  def all(module, opts) when is_atom(module) do
+    Pool.transaction fn(conn) -> all(conn, module, opts) end
+  end
+  
+  def all(conn, module, opts) when is_pid(conn) and is_atom(module) and is_list(opts) do
     query = select_from(module)
     args = []
 
@@ -59,7 +75,7 @@ defmodule Ecto do
       query = query <> " LIMIT #{limit}"
     end
 
-    { _count, results } = Ecto.Pool.query! query, args
+    { _count, results } = Pool.query(conn, query, args)
     lc result inlist results, do: module.__ecto__(:allocate, null_to_nil(result))
   end
 
@@ -74,6 +90,10 @@ defmodule Ecto do
   check the table for the primary key
   """
   def exists?(record) when is_record(record) do
+    Pool.transaction fn(conn) -> exists?(conn, record) end
+  end
+  
+  def exists?(conn, record) when is_pid(conn) and is_record(record) do
     module      = elem(record, 0)
     table       = module.__ecto__(:table)
     primary_key = module.__ecto__(:primary_key)
@@ -81,7 +101,7 @@ defmodule Ecto do
 
     if id do
       query = "SELECT EXISTS (SELECT TRUE FROM #{table} WHERE #{primary_key} = $1 LIMIT 1)"
-      case Ecto.Pool.query(query, [id]) do
+      case Pool.query(conn, query, [id]) do
         { _count, [ { true } ] }  -> true
         _other                    -> false
       end
@@ -91,7 +111,7 @@ defmodule Ecto do
 
   end
 
-  def valid?(record) do
+  def valid?(record) when is_record(record) do
     module      = elem(record, 0)
     validations = module.__ecto__(:validations)
 
@@ -102,20 +122,49 @@ defmodule Ecto do
     V.validate(plan) == []
   end
 
-  def save(record) do
-    if exists?(record), do: update(record), else: create(record)
+
+  def save(record) when is_record(record) do
+    Pool.transaction fn(conn) -> save(conn, record) end
   end
 
-  def save!(record) do
-    case save(record) do
-      { :invalid, errors } ->
-        raise RecordInvalid.new errors: errors
+  def save(conn, record) when is_pid(conn) and is_record(record) do
+    if exists?(conn, record), do: update(conn, record), else: create(conn, record)
+  end
+
+
+  def save!(record) when is_record(record) do
+    Pool.transaction! fn(conn) -> save!(conn, record) end
+  end
+
+  def save!(conn, record) when is_pid(conn) and is_record(record) do
+    if exists?(conn, record), do: update!(conn, record), else: create!(conn, record)
+  end
+
+
+  def update(record) when is_record(record) do
+    Pool.transaction fn(conn) -> update(conn, record) end
+  end
+
+  def update(conn, record) when is_pid(conn) and is_record(record) do
+    update(conn, record, :query)
+  end
+
+
+  def update!(record) when is_record(record) do
+    Pool.transaction! fn(conn) -> update!(conn, record) end
+  end
+  
+  def update!(conn, record) when is_pid(conn) and is_record(record) do
+    case update(conn, record, :query!) do
+      { :invalid, Errors } ->
+        raise Ecto.RecordInvalid[ errors: Errors ]
       valid ->
         valid
     end
   end
 
-  def update(record) when is_record(record) do
+
+  def update(conn, record, query_fun) when is_pid(conn) and is_record(record) and is_atom(query_fun) do
     module      = elem(record, 0)
     validations = module.__ecto__(:validations)
 
@@ -136,7 +185,7 @@ defmodule Ecto do
         kv = Enum.map_join List.zip([keys, values]), ",", fn({k, v}) -> "#{k} = #{v}" end
 
         query = "UPDATE #{table} SET #{kv} WHERE #{primary_key} = $#{len(params)+1} RETURNING #{returning}"
-        { _count, [result] } = Ecto.Pool.query! query, params ++ [id]
+        { _count, [result] } = apply( Pool, query_fun, [ conn, query, params ++ [id] ] )
         module.__ecto__(:allocate, null_to_nil(result))
       errors ->
         { :invalid, errors }
@@ -148,6 +197,29 @@ defmodule Ecto do
   updated based on the existance of an ID.
   """
   def create(record) when is_record(record) do
+    Pool.transaction fn(conn) -> create(conn, record) end
+  end
+  
+  def create(conn, record) when is_pid(conn) and is_record(record) do
+    create(conn, record, :query)
+  end
+
+  
+  def create!(record) when is_record(record) do
+    Pool.transaction! fn(conn) -> create!(conn, record) end
+  end
+  
+  def create!(conn, record) when is_pid(conn) and is_record(record) do
+    case create(conn, record, :query!) do
+      { :invalid, errors } ->
+        raise Ecto.RecordInvalid.new errors: errors
+      valid ->
+        valid
+    end
+  end
+
+  
+  def create(conn, record, query_fun) when is_pid(conn) and is_record(record) and is_atom(query_fun) do
     module      = elem(record, 0)
     validations = module.__ecto__(:validations)
 
@@ -168,7 +240,7 @@ defmodule Ecto do
         keys = Enum.join keys, ","
         values = Enum.join values, ","
 
-        { _count, [result] } = Ecto.Pool.query! "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING #{returning}", params
+        { _count, [result] } = apply(Pool, query_fun, [conn, "INSERT INTO #{table} (#{keys}) VALUES (#{values}) RETURNING #{returning}", params])
         module.__ecto__(:allocate, null_to_nil(result))
       errors ->
         { :invalid, errors }
@@ -213,7 +285,6 @@ defmodule Ecto do
           where = [ atom_to_binary(key) <> " = $#{Enum.count args}" | where ]
           { where, args }
       end
-
     { " WHERE " <> Enum.join(where, " AND "), args }
   end
 
@@ -224,20 +295,28 @@ defmodule Ecto do
   @doc """
   Destroys a given record.
   """
-  def destroy(record) do
+  def destroy(record) when is_record(record) do
+    Pool.transaction fn(conn) -> destroy(conn, record) end
+  end
+
+  def destroy(conn, record) when is_pid(conn) and is_record(record) do
     module      = elem(record, 0)
     primary_key = module.__ecto__(:primary_key)
     pk_value    = apply(module, primary_key, [record])
 
-    1 == destroy(module, where: [ { primary_key, pk_value } ])
+    1 == destroy(conn, module, where: [ { primary_key, pk_value } ])
   end
 
-  def destroy(module, [ where: opts ]) do
+  def destroy(module, opts) when is_atom(module) and is_list(opts) do
+    Pool.transaction fn(conn) -> destroy(conn, module, opts) end
+  end
+
+  def destroy(conn, module, [ where: opts ]) when is_pid(conn) and is_atom(module) and is_list(opts) do
     table = module.__ecto__(:table)
     
     { where, args} = where_clause(opts)
     
-    { count, [] } = Ecto.Pool.query "DELETE FROM #{table}#{where}", args
+    { count, [] } = Pool.query conn, "DELETE FROM #{table}#{where}", args
     count
   end
 end

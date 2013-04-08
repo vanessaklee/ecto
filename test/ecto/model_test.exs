@@ -36,19 +36,21 @@ end
 defmodule Ecto.ModelTest do
   use ExUnit.Case
 
+  alias Ecto.Pool, as: Pool
+
   setup_all do
-    Ecto.Pool.query %b;
+    Pool.query %b;
       CREATE TABLE ecto_test (id SERIAL PRIMARY KEY, version INT, name TEXT, comment TEXT);
     :ok
   end
 
   setup do
-    Ecto.Pool.query "DELETE FROM ecto_test *"
+    Pool.query "DELETE FROM ecto_test *"
     :ok
   end
 
   teardown_all do
-    Ecto.Pool.query "DROP TABLE ecto_test"
+    Pool.query "DROP TABLE ecto_test"
     :ok
   end
 
@@ -56,7 +58,7 @@ defmodule Ecto.ModelTest do
     model = Ecto.save TestModel[version: 1]
     assert model.id != nil
     assert_raise Ecto.QueryError, fn ->
-      Ecto.create model
+      Ecto.create! model
     end
   end
 
@@ -72,17 +74,6 @@ defmodule Ecto.ModelTest do
     version3 = model.version nil
     assert version3 == Ecto.save(version3)
     assert version3 == Ecto.get TestModel, model.id
-  end
-
-  test :save_many do
-    model1 = TestModel[id: 200, version: 1]
-    model2 = TestModel[id: 201, version: 1]
-    model3 = TestModel[id: 202, version: 1]
-    Ecto.save [ model1, model2, model3 ]
-
-    assert model1 == Ecto.get TestModel, 200
-    assert model2 == Ecto.get TestModel, 201
-    assert model3 == Ecto.get TestModel, 202
   end
 
   test :destroy do
@@ -136,6 +127,25 @@ defmodule Ecto.ModelTest do
     assert_raise Ecto.RecordInvalid, fn ->
       Ecto.save! model
     end
+  end
+
+  test :transactions do
+    [ gary, lary ] = Ecto.Pool.transaction fn(conn) ->
+      gary = Ecto.save conn, WithValidations[name: "Gary"]
+      lary = Ecto.save conn, WithUpdatable[name: "Lary", version: 2]
+      [ gary, lary ]
+    end
+
+    assert gary.id != nil
+    assert lary.id != nil
+
+    lary = lary.name "Lary II"
+    Ecto.Pool.transaction fn(conn) ->
+      Ecto.save conn, lary
+      raise "Nope!!"
+    end
+    lary = Ecto.get WithUpdatable, lary.id
+    assert lary.name == "Lary"
   end
 
   test :updatable do
