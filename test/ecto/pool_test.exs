@@ -43,9 +43,9 @@ defmodule Ecto.PoolTest do
       Pool.query(conn, "insert into txn_test(txn) values(2)")
     end
 
-    assert { :error, :bad_match } == Pool.transaction fn(conn) ->
+    assert { :error, RuntimeError[] } == Pool.transaction fn(conn) ->
       Pool.query(conn, "select 1+1")
-      raise :bad_match
+      raise RuntimeError[]
     end
   end
 
