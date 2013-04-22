@@ -37,7 +37,7 @@ defmodule Ecto.Model do
 
       @ecto_primary_key :id
 
-      Enum.each [:__record__, :ecto_validations, :ecto_skip_on_update],
+      Enum.each [:record_fields, :ecto_validations, :ecto_skip_on_update],
         Module.register_attribute(__MODULE__, &1, accumulate: true, persist: false)
 
       import Ecto.Model
@@ -54,7 +54,7 @@ defmodule Ecto.Model do
     default = opts[:default]
     quote do
       @ecto_primary_key unquote(name)
-      @__record__ { unquote(name), unquote(default) }
+      @record_fields { unquote(name), unquote(default) }
     end
   end
 
@@ -62,10 +62,11 @@ defmodule Ecto.Model do
     default = opts[:default]
     validator = opts[:validator]
     updatable = Keyword.get opts, :updatable, true
+    quoted_validator = quote do: unquote(validator)
     quote do
-      @__record__ { unquote(name), unquote(default) }
+      @record_fields { unquote(name), unquote(default) }
       if unquote(validator) do
-        @ecto_validations { unquote(name), quote do: unquote(validator) }
+        @ecto_validations { unquote(name), unquote(Macro.escape(quoted_validator)) }
       end
       if not unquote(updatable) do
         @ecto_skip_on_update unquote(name)
@@ -74,9 +75,9 @@ defmodule Ecto.Model do
   end
 
   defmacro __record__(_) do
-    record = Module.get_attribute(__CALLER__.module, :__record__)
-    Record.deffunctions(record, __CALLER__)
-    Record.deftypes(record, [], __CALLER__)
+    fields = Module.get_attribute(__CALLER__.module, :record_fields)
+    Record.deffunctions(fields, __CALLER__)
+    Record.deftypes(fields, [], __CALLER__)
     :ok
   end
 
@@ -86,7 +87,7 @@ defmodule Ecto.Model do
     validations    = Module.get_attribute(__CALLER__.module, :ecto_validations)
     skip_on_update = Module.get_attribute(__CALLER__.module, :ecto_skip_on_update)
 
-    fields = Module.get_attribute(__CALLER__.module, :__record__)
+    fields = Module.get_attribute(__CALLER__.module, :record_fields)
     fields = Enum.map fields, elem(&1, 0)
 
     allocate_fields = lc key inlist fields do
