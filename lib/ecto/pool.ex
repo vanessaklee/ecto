@@ -92,7 +92,7 @@ defmodule Ecto.Pool do
             resp
         end
       rescue
-        _ = e ->
+        e ->
           query(conn, "rollback")
           { :error, e }
       end
@@ -113,7 +113,7 @@ defmodule Ecto.Pool do
             resp
         end
       rescue
-        _ = e ->
+        e ->
           query(conn, "rollback")
           raise e
       end

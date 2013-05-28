@@ -61,7 +61,7 @@ defmodule Ecto.Validations do
 
   defimpl Validatex.Validate, for: OneOf do
     def valid?(OneOf[allowed: allowed], value) do
-      List.member?(allowed, value) || :not_allowed
+      Enum.member?(allowed, value) || :not_allowed
     end
   end
 end
