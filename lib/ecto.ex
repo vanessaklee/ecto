@@ -277,12 +277,18 @@ defmodule Ecto do
     { Enum.reverse(keys), Enum.reverse(values), Enum.reverse(params) }
   end
 
-  def where_clause(opts) do
-    { where, args } =
+  def where_clause(opts) do  
+    opts = Enum.map opts, fn
+      { key, value }     -> { key, "=", value }
+      { key, op, value } -> { key, op, value }
+    end
+
+    { where, args } =  
       Enum.reduce opts, { [], [] }, fn
-        { key, value }, { where, args } when is_atom(key) ->
+        { key, op, value }, { where, args } ->
           args = args ++ [value]
-          where = [ atom_to_binary(key) <> " = $#{Enum.count args}" | where ]
+          clause = Enum.join(["(", key, op, "$#{Enum.count args}", ")"], " ")
+          where = [ clause | where ]
           { where, args }
       end
     { " WHERE " <> Enum.join(where, " AND "), args }
