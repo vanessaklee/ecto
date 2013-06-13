@@ -14,8 +14,11 @@ defmodule EctoTestCase do
 
   test :map_query do
     stmt = "SELECT 1, 2, 3"
-    args = []
     mapper = fn({x,y,z}) -> { x * 2, y * 2, z * 2 } end
-    assert Ecto.map(stmt, args, mapper) == [ { 2, 4, 6 } ]
+    assert Ecto.map(stmt, mapper) == [ { 2, 4, 6 } ]
+
+    stmt = "SELECT true = $1"
+    mapper = fn({r}) -> not r end
+    assert Ecto.map(stmt, [false], mapper) == [ true ]
   end
 end

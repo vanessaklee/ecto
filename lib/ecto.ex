@@ -326,7 +326,7 @@ defmodule Ecto do
     count
   end
 
-  def map(stmt, args, mapper) do
+  def map(stmt, args // [], mapper) do
     case Ecto.Pool.query(stmt, args) do
       { :error, error } -> { :error, error }
       { 0, _rows }      -> []
