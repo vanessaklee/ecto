@@ -11,4 +11,11 @@ defmodule EctoTestCase do
     
     assert { " WHERE ( biz = $2 ) AND ( foo >= $1 )", [ :biz, :baz ] } == Ecto.where_clause(opts)
   end
+
+  test :map_query do
+    stmt = "SELECT 1, 2, 3"
+    args = []
+    mapper = fn({x,y,z}) -> { x * 2, y * 2, z * 2 } end
+    assert Ecto.map(stmt, args, mapper) == [ { 2, 4, 6 } ]
+  end
 end

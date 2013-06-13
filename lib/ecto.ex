@@ -325,4 +325,12 @@ defmodule Ecto do
     { count, [] } = Pool.query conn, "DELETE FROM #{table}#{where}", args
     count
   end
+
+  def map(stmt, args, mapper) do
+    case Ecto.Pool.query(stmt, args) do
+      { :error, error } -> { :error, error }
+      { 0, _rows }      -> []
+      { _count, rows }  -> Enum.map rows, mapper
+    end
+  end
 end
