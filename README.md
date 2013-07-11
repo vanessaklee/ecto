@@ -2,7 +2,7 @@
 
 Ecto is a simplistic data mapper to postgresql. It provides useful macros
 for defining Modules and mapping them to a database table. Communication
-to postgres is done via epgsql_pool.
+to postgres is done via poolboy + pgsql.
 
 ## Getting ecto
 
