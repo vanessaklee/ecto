@@ -52,27 +52,27 @@ defmodule Ecto.URITest do
     assert Keyword.equal?(expected, actual)
   end
 
-  test :bad_uri, do: assert_raise ParseError, fn ->
+  test :bad_uri, do: assert_raise(ParseError, fn ->
     Parser.parse ":mecto"
-  end
+  end)
 
-  test :no_password, do: assert_raise ParseError, fn ->
+  test :no_password, do: assert_raise(ParseError, fn ->
     Parser.parse "ecto+postgres://user:@localhost/db"
-  end
+  end)
 
-  test :no_user, do: assert_raise ParseError, fn ->
+  test :no_user, do: assert_raise(ParseError, fn ->
     Parser.parse "ecto+postgres://:pass@host/db"
-  end
+  end)
 
-  test :no_db, do: assert_raise ParseError, fn ->
+  test :no_db, do: assert_raise(ParseError, fn ->
     Parser.parse "ecto+postgres://user:pass@host"
-  end
+  end)
   
-  test :no_db_with_args, do: assert_raise ParseError, fn ->
+  test :no_db_with_args, do: assert_raise(ParseError, fn ->
     Parser.parse "ecto+postgres://user:pass@host?args"
-  end
+  end)
 
-  test :no_host, do: assert_raise ParseError, fn ->
+  test :no_host, do: assert_raise(ParseError, fn ->
     Parser.parse "ecto+postgres://user:pass@/db"
-  end
+  end)
 end
