@@ -113,7 +113,7 @@ defmodule Ecto.URI do
 
   defp parse_opts(opts, info) do
     opts = String.split(opts, "&")
-    opts = Enum.map(opts, String.split &1, "=")
+    opts = Enum.map(opts, String.split(&1, "="))
       |> Enum.map(opt(&1))
       |> Enum.filter &1 != nil
     Keyword.put info, :opts, opts

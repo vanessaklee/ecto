@@ -8,8 +8,6 @@ defexception Ecto.QueryError, reason: nil, stmt: nil, args: nil do
 end
 
 defmodule Ecto.Pool do
-
-  alias :pgsql_connection, as: Pgsql
   alias :poolboy, as: Poolboy
 
   def start_link, do: start_link uri
@@ -22,19 +20,15 @@ defmodule Ecto.Pool do
   Execute query
   """
   def query(stmt) when is_binary(stmt) do
-    transaction fn(conn) ->
-      query(conn, stmt)
-    end
-  end
-  def query(stmt, args) when is_binary(stmt) and is_list(args) do
-    transaction fn(conn) ->
-      query(conn, stmt, args)
-    end
+    transaction &query(&1, stmt)
   end
 
-  def query(conn, stmt)       when is_pid(conn) and is_binary(stmt), do: query(conn, stmt, [])
-  def query(conn, stmt, args) when is_pid(conn) and is_binary(stmt) and is_list(args) do
-    case Pgsql.extended_query(stmt, args, { :pgsql_connection, conn }) do
+  def query(stmt, args) when is_binary(stmt) and is_list(args) do
+    transaction &query(&1, stmt, args)
+  end
+
+  def query(conn, stmt, args // []) when is_pid(conn) and is_binary(stmt) and is_list(args) do
+    case Ecto.Adapters.Postgres.query(conn, stmt, args) do
       { { :insert, _, count }, rows } -> { count, rows }
       { { :select, count }, rows }    -> { count, rows }
       { { :update, count }, rows }    -> { count, rows }
@@ -48,74 +42,35 @@ defmodule Ecto.Pool do
     end
   end
 
-
   @doc """
   Executes a query in a transaction
   Raises Ecto.QueryError on 
   """
   def query!(stmt) when is_binary(stmt) do
-    transaction! fn(conn) ->
-      query!(conn, stmt)
-    end
+    transaction! &query!(&1, stmt)
   end
 
   def query!(stmt, args) when is_binary(stmt) and is_list(args) do
-    transaction! fn(conn) ->
-      query!(conn, stmt, args)
-    end
+    transaction! &query!(&1, stmt, args)
   end
 
-  def query!(conn, stmt)       when is_pid(conn) and is_binary(stmt), do: query(conn, stmt, [])
-  def query!(conn, stmt, args) when is_pid(conn) and is_binary(stmt) and is_list(args) do
+  def query!(conn, stmt, args // []) when is_pid(conn) and is_binary(stmt) and is_list(args) do
     case query(conn, stmt, args) do
       { :error, reason } -> raise Ecto.QueryError[reason: reason, stmt: stmt, args: args]
       other              -> other
     end
   end
 
-  def squery(stmt) do
-    transaction fn(conn) ->
-      Pgsql.simple_query(stmt, { :pgsql_connection, conn })
-    end
-  end
-
   def transaction(txn) do
-    Poolboy.transaction __MODULE__, fn(conn) ->
-      try do
-        query(conn, "begin")
-        case txn.(conn) do
-          { :error, Error } ->
-            query(conn, "rollback")
-            { :error, Error }
-          resp ->              
-            query(conn, "commit")
-            resp
-        end
-      rescue
-        e ->
-          query(conn, "rollback")
-          { :error, e }
-      end
-    end
+    Poolboy.transaction __MODULE__, &Ecto.Worker.transaction(&1, txn)
   end
-
 
   def transaction!(txn) do
-    Poolboy.transaction __MODULE__, fn(conn) ->
-      try do
-        query(conn, "begin")
-        case txn.(conn) do
-          { :error, Error } ->
-            query(conn, "rollback")
-            raise Ecto.QueryError[reason: Error]
-          resp ->              
-            query(conn, "commit")
-            resp
-        end
-      rescue
-        e ->
-          query(conn, "rollback")
-          raise e
+    Poolboy.transaction __MODULE__, fn(worker) ->
+      case Ecto.Worker.transaction(worker, txn) do
+        { :error, exception } when is_exception(exception) ->
+          raise exception
+        result -> result
       end
     end
   end
@@ -126,7 +81,7 @@ defmodule Ecto.Pool do
 
     opts = Keyword.delete opts, :timeout
 
-    pool_args = Keyword.merge [ name: { :local, __MODULE__ }, worker_module: :pgsql_connection ], opts
+    pool_args = Keyword.merge [ name: { :local, __MODULE__ }, worker_module: Ecto.Worker ], opts
     
     worker_args = [
       host:     binary_to_list(info[:host]),

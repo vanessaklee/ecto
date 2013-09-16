@@ -17,7 +17,7 @@ defmodule Ecto.PoolTest do
   end
 
   test :args do
-    pool_args = [ size: 5, max_overflow: 10, name: { :local, Pool }, worker_module: :pgsql_connection ]
+    pool_args = [ size: 5, max_overflow: 10, name: { :local, Pool }, worker_module: Ecto.Worker ]
     worker_args = [
       host:     'localhost',
       database: "db",
