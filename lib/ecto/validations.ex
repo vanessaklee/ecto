@@ -29,7 +29,7 @@ defmodule Ecto.Validations do
       if value =~ %r"^[^@]+@[^@]+\.[^@]+$" do
         if check_domain do
           [ _, domain ] = String.split(value, "@")
-          case :inet.gethostbyname(binary_to_list(domain)) do
+          case :inet.gethostbyname(String.from_char_list!(domain)) do
             { :error, :nxdomain } -> :bad_domain
             _ -> true
           end
