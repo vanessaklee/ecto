@@ -81,7 +81,7 @@ defmodule Ecto do
 
   defp select_from(module) do
     fields = module.__ecto__(:fields)
-    cols   = Enum.join(Enum.map(fields, to_binary(&1)), ",")
+    cols   = Enum.join(Enum.map(fields, to_string(&1)), ",")
     table  = module.__ecto__(:table)
     "SELECT #{cols} FROM #{table}"
   end
@@ -294,7 +294,7 @@ defmodule Ecto do
     { " WHERE " <> Enum.join(where, " AND "), args }
   end
 
-  defp returning(cols), do: Enum.join(Enum.map(cols, to_binary(&1)), ",")
+  defp returning(cols), do: Enum.join(Enum.map(cols, to_string(&1)), ",")
 
   defp len(e), do: Enum.count e
 

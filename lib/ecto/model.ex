@@ -82,7 +82,7 @@ defmodule Ecto.Model do
   end
 
   defmacro __ecto__(_) do
-    table          = Module.get_attribute(__CALLER__.module, :ecto_table) |> to_binary
+    table          = Module.get_attribute(__CALLER__.module, :ecto_table) |> to_string
     primary_key    = Module.get_attribute(__CALLER__.module, :ecto_primary_key)
     validations    = Module.get_attribute(__CALLER__.module, :ecto_validations)
     skip_on_update = Module.get_attribute(__CALLER__.module, :ecto_skip_on_update)
