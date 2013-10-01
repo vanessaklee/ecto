@@ -91,7 +91,7 @@ defmodule Ecto.Model do
     fields = Enum.map fields, elem(&1, 0)
 
     allocate_fields = lc key inlist fields do
-      { key, quote do: __allocate__(var!(args), unquote(to_binary(key))) }
+      { key, quote do: __allocate__(var!(args), unquote(to_string(key))) }
     end
 
     { allocate_fields2, _ } = Enum.reduce fields, { [], 0 }, fn
