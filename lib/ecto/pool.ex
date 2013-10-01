@@ -127,9 +127,10 @@ defmodule Ecto.Pool do
     opts = Keyword.delete opts, :timeout
 
     pool_args = Keyword.merge [ name: { :local, __MODULE__ }, worker_module: :pgsql_connection ], opts
+    h = :binary.list_to_bin(info[:host])
     
     worker_args = [
-      host:     :binary.list_to_bin(info[:host]),
+      host:     h,
       database: info[:db],
       user:     info[:user],
       password: info[:pass],
