@@ -129,7 +129,7 @@ defmodule Ecto.Pool do
     pool_args = Keyword.merge [ name: { :local, __MODULE__ }, worker_module: :pgsql_connection ], opts
     
     worker_args = [
-      host:     String.from_char_list!(info[:host]),
+      host:     :binary.list_to_bin(info[:host]),
       database: info[:db],
       user:     info[:user],
       password: info[:pass],
